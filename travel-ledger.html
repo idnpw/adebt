@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>여행 빚장부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDEAE0;
+    --paper-line:#D8D2C3;
+    --ink:#20283C;
+    --ink-soft:#4C5468;
+    --gold:#B8912E;
+    --red:#A83A2E;
+    --red-soft:#C65C4F;
+    --green:#3E6B52;
+    --card:#F7F5EE;
+    --shadow: 0 1px 0 rgba(32,40,60,.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;}
+  body{
+    background:var(--paper);
+    background-image:
+      repeating-linear-gradient(transparent, transparent 27px, var(--paper-line) 28px);
+    color:var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+    min-height:100vh;
+    padding:32px 16px 80px;
+  }
+  .wrap{max-width:760px;width:100%;margin:0 auto;}
+
+  header{
+    text-align:center;
+    margin-bottom:28px;
+    position:relative;
+  }
+  header .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.24em;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Nanum Myeongjo', serif;
+    font-weight:800;
+    font-size:38px;
+    margin:6px 0 4px;
+    letter-spacing:-.01em;
+  }
+  header .sub{
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .stamp{
+    position:absolute;
+    top:-6px; right:0;
+    width:66px; height:66px;
+    border:2.5px solid var(--red);
+    border-radius:50%;
+    color:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Nanum Myeongjo',serif;
+    font-weight:800;
+    font-size:13px;
+    line-height:1.1;
+    text-align:center;
+    transform:rotate(-9deg);
+    opacity:.85;
+    letter-spacing:.02em;
+  }
+
+  .names-bar{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .name-chip{
+    position:relative;
+    min-width:0;
+    background:var(--card);
+    border:1px solid var(--paper-line);
+    border-radius:3px;
+    padding:9px 10px;
+    box-shadow:var(--shadow);
+  }
+  .name-chip label{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    color:var(--gold);
+    letter-spacing:.12em;
+    margin-bottom:3px;
+  }
+  .name-chip input{
+    width:100%;
+    border:none;
+    background:transparent;
+    font-family:'Nanum Myeongjo',serif;
+    font-weight:700;
+    font-size:17px;
+    color:var(--ink);
+    outline:none;
+    border-bottom:1px solid transparent;
+    padding-right:16px;
+  }
+  .name-chip input:focus{border-bottom:1px solid var(--gold);}
+  .name-chip .chip-del{
+    position:absolute;
+    top:6px; right:6px;
+    background:none;
+    color:var(--ink-soft);
+    font-size:13px;
+    line-height:1;
+    padding:3px 5px;
+  }
+  .name-chip .chip-del:hover{color:var(--red);}
+  .name-chip.add-chip{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:transparent;
+    border:1.5px dashed var(--paper-line);
+    box-shadow:none;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.06em;
+    cursor:pointer;
+    padding:9px 10px;
+    min-height:52px;
+  }
+  .name-chip.add-chip:hover{border-color:var(--gold);color:var(--gold);}
+
+  section{
+    background:var(--card);
+    border:1px solid var(--paper-line);
+    border-radius:4px;
+    padding:20px;
+    margin-bottom:18px;
+    box-shadow:var(--shadow);
+  }
+  .section-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--paper-line);
+  }
+
+  /* 입력 폼 */
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    gap:10px 12px;
+    align-items:end;
+  }
+  .field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .field span{font-size:11px;color:var(--ink-soft);}
+  select,input[type=number],input[type=text],input[type=date]{
+    width:100%;
+    min-width:0;
+    font-family:'Noto Sans KR',sans-serif;
+    font-size:14px;
+    padding:9px 10px;
+    border:1px solid var(--paper-line);
+    border-radius:3px;
+    background:#fff;
+    color:var(--ink);
+    outline:none;
+  }
+  select:focus,input:focus{border-color:var(--gold);}
+  input[type=date]{
+    line-height:1.3;
+  }
+  input[type=date]::-webkit-datetime-edit,
+  input[type=date]::-webkit-datetime-edit-fields-wrapper,
+  input[type=date]::-webkit-datetime-edit-text,
+  input[type=date]::-webkit-datetime-edit-month-field,
+  input[type=date]::-webkit-datetime-edit-day-field,
+  input[type=date]::-webkit-datetime-edit-year-field{
+    font-family:'Noto Sans KR', sans-serif;
+    font-size:14px;
+    color:var(--ink);
+  }
+  input[type=date]::-webkit-calendar-picker-indicator{
+    font-size:14px;
+    opacity:.65;
+  }
+  .arrow-mid{
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--red);
+    font-size:18px;
+    padding-bottom:9px;
+    text-align:center;
+  }
+  .form-row2{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr auto;
+    gap:10px;
+    margin-top:12px;
+  }
+  .form-row-currency{
+    display:grid;
+    grid-template-columns:1fr 1fr 1.4fr;
+    gap:10px 12px;
+    margin-top:12px;
+  }
+  .rate-row{display:flex;gap:6px;}
+  .rate-row input{flex:1;min-width:0;}
+  .rate-fetch{
+    flex-shrink:0;
+    background:var(--card);
+    border:1px solid var(--paper-line);
+    color:var(--ink-soft);
+    font-size:15px;
+    padding:0 12px;
+    border-radius:3px;
+  }
+  .rate-fetch:hover{color:var(--gold);border-color:var(--gold);}
+  .rate-fetch.loading{opacity:.45;pointer-events:none;}
+  .converted-hint{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:8px;
+    min-height:14px;
+  }
+  #rateField{display:none;}
+  #rateField.show{display:flex;}
+  .btn-add{min-width:0;}
+  @media(max-width:640px){
+    .form-grid{grid-template-columns:1fr auto 1fr;}
+    .form-row2{grid-template-columns:1fr 1fr;}
+    .form-row2 .btn-add{grid-column:1 / -1;width:100%;padding:12px 18px;}
+    .form-row-currency{grid-template-columns:1fr 1fr;}
+    #rateField{grid-column:1 / -1;}
+  }
+  button{
+    cursor:pointer;
+    font-family:'Noto Sans KR',sans-serif;
+    border:none;
+    border-radius:3px;
+    transition:opacity .15s ease, transform .1s ease;
+  }
+  button:active{transform:scale(.97);}
+  .btn-add{
+    background:var(--ink);
+    color:var(--paper);
+    font-weight:700;
+    font-size:14px;
+    padding:10px 18px;
+    white-space:nowrap;
+  }
+  .btn-add:hover{opacity:.88;}
+
+  /* 내역 리스트 */
+  .entry{
+    display:grid;
+    grid-template-columns:auto 1fr auto auto;
+    gap:12px;
+    align-items:center;
+    padding:12px 4px;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .entry:last-child{border-bottom:none;}
+  .entry .date{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    min-width:64px;
+  }
+  .entry .flow{font-size:14px;}
+  .entry .flow b{color:var(--ink);}
+  .entry .flow .arrow{color:var(--red);margin:0 4px;}
+  .entry .desc{
+    display:block;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .entry .amount{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:15px;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  .entry .amount .amount-sub{
+    display:block;
+    font-weight:400;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .entry .del{
+    background:none;
+    color:var(--ink-soft);
+    font-size:16px;
+    padding:2px 8px;
+  }
+  .entry .del:hover{color:var(--red);}
+  .empty-msg{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:20px 0;
+  }
+
+  /* 잔액 요약 */
+  .balance-list{display:flex;flex-direction:column;gap:8px;}
+  .balance-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 12px;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:3px;
+  }
+  .balance-row .who{font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:15px;}
+  .balance-row .val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;}
+  .val.plus{color:var(--green);}
+  .val.minus{color:var(--red);}
+  .val.zero{color:var(--ink-soft);}
+
+  /* 정산 다이어그램 */
+  .diagram-wrap{display:flex;justify-content:center;margin-bottom:6px;}
+  .settle-list{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .settle-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+    padding:10px 12px;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:3px;
+  }
+  .settle-row .who{font-weight:700;}
+  .settle-row .arrow{color:var(--red);font-family:'IBM Plex Mono',monospace;}
+  .settle-row .amt{
+    margin-left:auto;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    color:var(--red-soft);
+  }
+  .all-settled{
+    text-align:center;
+    color:var(--green);
+    font-family:'Nanum Myeongjo',serif;
+    font-weight:700;
+    font-size:15px;
+    padding:10px 0;
+  }
+
+  footer{
+    text-align:center;
+    margin-top:24px;
+  }
+  .reset-btn{
+    background:none;
+    color:var(--ink-soft);
+    font-size:12px;
+    text-decoration:underline;
+    padding:6px;
+  }
+  .reset-btn:hover{color:var(--red);}
+
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="stamp">SETTLE<br>UP</div>
+    <div class="eyebrow">TRAVEL LEDGER</div>
+    <h1>여행 빚장부</h1>
+    <div class="sub">함께 떠난 여행, 남은 돈 계산은 여기서 끝낸다</div>
+  </header>
+
+  <div class="names-bar" id="namesBar"></div>
+
+  <section>
+    <p class="section-title">빚 기록하기</p>
+    <div class="form-grid">
+      <div class="field">
+        <span>빌린 사람 (지불할 사람)</span>
+        <select id="fromSel"></select>
+      </div>
+      <div class="arrow-mid">→</div>
+      <div class="field">
+        <span>빌려준 사람 (받을 사람)</span>
+        <select id="toSel"></select>
+      </div>
+    </div>
+
+    <div class="form-row-currency">
+      <div class="field">
+        <span>금액</span>
+        <input type="number" id="amountInput" placeholder="예: 30000" min="0">
+      </div>
+      <div class="field">
+        <span>통화</span>
+        <select id="currencySel"></select>
+      </div>
+      <div class="field" id="rateField">
+        <span>환율 (원 / 1, 직접 수정 가능)</span>
+        <div class="rate-row">
+          <input type="number" id="rateInput" min="0" step="0.01">
+          <button type="button" class="rate-fetch" id="rateFetchBtn" title="실시간 환율 조회">↻</button>
+        </div>
+      </div>
+    </div>
+    <div class="converted-hint" id="convertedHint"></div>
+
+    <div class="form-row2">
+      <div class="field">
+        <span>내용</span>
+        <input type="text" id="descInput" placeholder="예: 나고야 저녁식사" maxlength="40">
+      </div>
+      <div class="field">
+        <span>날짜</span>
+        <input type="date" id="dateInput">
+      </div>
+      <button class="btn-add" id="addBtn">기록 추가</button>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">전체 내역</p>
+    <div id="entryList"></div>
+  </section>
+
+  <section>
+    <p class="section-title">1인당 순잔액</p>
+    <div class="balance-list" id="balanceList"></div>
+  </section>
+
+  <section>
+    <p class="section-title">최소 정산 플랜</p>
+    <div class="diagram-wrap">
+      <svg id="diagram" width="300" height="250" viewBox="0 0 300 250">
+        <defs>
+          <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#A83A2E"/>
+          </marker>
+        </defs>
+        <g id="diagramContent"></g>
+      </svg>
+    </div>
+    <div class="settle-list" id="settleList"></div>
+  </section>
+
+  <footer>
+    <button class="reset-btn" id="resetBtn">모든 기록 초기화</button>
+  </footer>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'travelLedger_v1';
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      s.entries = (s.entries || []).map(en=>({
+        ...en,
+        currency: en.currency || 'KRW',
+        rate: en.rate ?? 1,
+        krwAmount: en.krwAmount ?? en.amount,
+      }));
+      return s;
+    }
+  }catch(e){ console.warn('load failed', e); }
+  return { people:['여행자1','여행자2','여행자3'], entries:[] };
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.warn('save failed', e); }
+}
+
+let state = loadState();
+
+const el = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('ko-KR') + '원';
+
+const MAX_PEOPLE = 8;
+const MIN_PEOPLE = 2;
+
+const CURRENCIES = [
+  {code:'KRW', symbol:'₩', name:'원'},
+  {code:'JPY', symbol:'¥', name:'엔'},
+  {code:'USD', symbol:'$', name:'달러'},
+  {code:'EUR', symbol:'€', name:'유로'},
+  {code:'CNY', symbol:'¥', name:'위안'},
+  {code:'GBP', symbol:'£', name:'파운드'},
+  {code:'THB', symbol:'฿', name:'바트'},
+  {code:'VND', symbol:'₫', name:'동'},
+  {code:'TWD', symbol:'NT$', name:'대만달러'},
+  {code:'HKD', symbol:'HK$', name:'홍콩달러'},
+  {code:'SGD', symbol:'S$', name:'싱가포르달러'},
+  {code:'AUD', symbol:'A$', name:'호주달러'},
+];
+// 대략적인 기본 환율(원/1단위). 참고용 값이며, 실시간 조회 버튼이나 직접 입력으로 갱신 가능.
+const DEFAULT_RATES = {
+  KRW:1, JPY:9.5, USD:1400, EUR:1500, CNY:195, GBP:1750,
+  THB:40, VND:0.057, TWD:43, HKD:180, SGD:1030, AUD:900,
+};
+const currencyInfo = code => CURRENCIES.find(c=>c.code===code) || CURRENCIES[0];
+
+function renderCurrencySelect(){
+  el('currencySel').innerHTML = CURRENCIES.map(c=>
+    `<option value="${c.code}">${c.code} · ${c.name}</option>`).join('');
+}
+
+function updateRateFieldVisibility(){
+  const code = el('currencySel').value;
+  const rateField = el('rateField');
+  if(code === 'KRW'){
+    rateField.classList.remove('show');
+    el('rateInput').value = 1;
+  } else {
+    rateField.classList.add('show');
+    if(!el('rateInput').value || el('rateInput').dataset.currency !== code){
+      el('rateInput').value = DEFAULT_RATES[code] ?? 1;
+      el('rateInput').dataset.currency = code;
+    }
+  }
+  updateConvertedHint();
+}
+
+function updateConvertedHint(){
+  const hint = el('convertedHint');
+  const code = el('currencySel').value;
+  const amount = parseFloat(el('amountInput').value);
+  const rate = parseFloat(el('rateInput').value);
+  if(code === 'KRW' || !amount || !rate){
+    hint.textContent = '';
+    return;
+  }
+  const krw = Math.round(amount * rate);
+  hint.textContent = `≈ ${fmt(krw)}로 환산됩니다`;
+}
+
+async function fetchLiveRate(){
+  const code = el('currencySel').value;
+  if(code === 'KRW') return;
+  const btn = el('rateFetchBtn');
+  btn.classList.add('loading');
+  try{
+    const res = await fetch(`https://open.er-api.com/v6/latest/${code}`);
+    const data = await res.json();
+    if(data && data.rates && data.rates.KRW){
+      el('rateInput').value = Math.round(data.rates.KRW * 100) / 100;
+      el('rateInput').dataset.currency = code;
+      updateConvertedHint();
+    } else {
+      alert('환율 조회에 실패했습니다. 직접 입력해주세요.');
+    }
+  }catch(e){
+    alert('환율 조회에 실패했습니다(네트워크 오류). 직접 입력해주세요.');
+  }finally{
+    btn.classList.remove('loading');
+  }
+}
+
+function renderNames(){
+  const bar = el('namesBar');
+  let html = state.people.map((name, i)=>`
+    <div class="name-chip">
+      <label>TRAVELER ${String(i+1).padStart(2,'0')}</label>
+      <input type="text" data-idx="${i}" class="name-input" maxlength="12" value="${escapeHtml(name)}">
+      ${state.people.length > MIN_PEOPLE ? `<button class="chip-del" data-idx="${i}" title="이 여행자 삭제">✕</button>` : ''}
+    </div>`).join('');
+  if(state.people.length < MAX_PEOPLE){
+    html += `<div class="name-chip add-chip" id="addTravelerBtn">+ 여행자 추가</div>`;
+  }
+  bar.innerHTML = html;
+}
+
+function addTraveler(){
+  if(state.people.length >= MAX_PEOPLE) return;
+  state.people.push(`여행자${state.people.length + 1}`);
+  saveState();
+  renderAll();
+}
+
+function removeTraveler(idx){
+  if(state.people.length <= MIN_PEOPLE) return;
+  const usedInEntry = state.entries.some(en => en.from === idx || en.to === idx);
+  if(usedInEntry){
+    alert('이 여행자와 관련된 빚 기록이 있어 삭제할 수 없습니다. 먼저 해당 기록을 삭제해주세요.');
+    return;
+  }
+  if(!confirm(`'${state.people[idx]}'을(를) 삭제할까요?`)) return;
+  state.people.splice(idx, 1);
+  state.entries.forEach(en=>{
+    if(en.from > idx) en.from -= 1;
+    if(en.to > idx) en.to -= 1;
+  });
+  saveState();
+  renderAll();
+}
+
+function renderSelects(){
+  const fromSel = el('fromSel'), toSel = el('toSel');
+  const prevFrom = fromSel.value, prevTo = toSel.value;
+  fromSel.innerHTML = ''; toSel.innerHTML = '';
+  state.people.forEach((name, i)=>{
+    fromSel.innerHTML += `<option value="${i}">${name}</option>`;
+    toSel.innerHTML += `<option value="${i}">${name}</option>`;
+  });
+  fromSel.value = prevFrom || '0';
+  toSel.value = prevTo || '1';
+  if(fromSel.value === toSel.value){
+    toSel.value = String((parseInt(fromSel.value)+1) % state.people.length);
+  }
+}
+
+function renderEntries(){
+  const list = el('entryList');
+  if(state.entries.length === 0){
+    list.innerHTML = '<div class="empty-msg">아직 기록된 빚이 없습니다. 위에서 첫 기록을 남겨보세요.</div>';
+    return;
+  }
+  const sorted = [...state.entries].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  list.innerHTML = sorted.map(en=>{
+    const fromName = state.people[en.from] ?? '?';
+    const toName = state.people[en.to] ?? '?';
+    const isForeign = en.currency && en.currency !== 'KRW';
+    const info = currencyInfo(en.currency || 'KRW');
+    const amountLabel = isForeign
+      ? `${info.symbol}${Number(en.amount).toLocaleString('ko-KR')} <span class="amount-sub">(${fmt(en.krwAmount)})</span>`
+      : fmt(en.krwAmount ?? en.amount);
+    return `
+      <div class="entry">
+        <span class="date">${en.date || ''}</span>
+        <span class="flow">
+          <b>${fromName}</b><span class="arrow">→</span><b>${toName}</b>
+          ${en.desc ? `<span class="desc">${escapeHtml(en.desc)}</span>` : ''}
+        </span>
+        <span class="amount">${amountLabel}</span>
+        <button class="del" data-id="${en.id}" title="삭제">✕</button>
+      </div>`;
+  }).join('');
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.entries = state.entries.filter(e=>String(e.id) !== btn.dataset.id);
+      saveState(); renderAll();
+    });
+  });
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function computeBalances(){
+  const bal = new Array(state.people.length).fill(0);
+  state.entries.forEach(en=>{
+    const amt = en.krwAmount ?? en.amount;
+    bal[en.to] += amt;
+    bal[en.from] -= amt;
+  });
+  return bal;
+}
+
+function renderBalances(bal){
+  const list = el('balanceList');
+  list.innerHTML = state.people.map((name,i)=>{
+    const v = bal[i];
+    const cls = v > 0.5 ? 'plus' : v < -0.5 ? 'minus' : 'zero';
+    const label = v > 0.5 ? `받을 돈 ${fmt(v)}` : v < -0.5 ? `줄 돈 ${fmt(-v)}` : '정산 완료';
+    return `<div class="balance-row"><span class="who">${name}</span><span class="val ${cls}">${label}</span></div>`;
+  }).join('');
+}
+
+// 최소 거래 정산 알고리즘 (그리디 매칭)
+function computeSettlement(bal){
+  const eps = 0.5;
+  const people = bal.map((v,i)=>({i, v})).filter(p=>Math.abs(p.v) > eps);
+  const debtors = people.filter(p=>p.v < 0).map(p=>({...p})).sort((a,b)=>a.v-b.v);
+  const creditors = people.filter(p=>p.v > 0).map(p=>({...p})).sort((a,b)=>b.v-a.v);
+  const tx = [];
+  let di=0, ci=0;
+  while(di < debtors.length && ci < creditors.length){
+    const d = debtors[di], c = creditors[ci];
+    const amount = Math.min(-d.v, c.v);
+    if(amount > eps){
+      tx.push({from:d.i, to:c.i, amount});
+      d.v += amount;
+      c.v -= amount;
+    }
+    if(Math.abs(d.v) <= eps) di++;
+    if(Math.abs(c.v) <= eps) ci++;
+  }
+  return tx;
+}
+
+function renderSettlement(bal){
+  const tx = computeSettlement(bal);
+  const settleList = el('settleList');
+  if(tx.length === 0){
+    settleList.innerHTML = '<div class="all-settled">모두 정산되었습니다 🎉</div>';
+  } else {
+    settleList.innerHTML = tx.map(t=>`
+      <div class="settle-row">
+        <span class="who">${state.people[t.from]}</span>
+        <span class="arrow">지불 →</span>
+        <span class="who">${state.people[t.to]}</span>
+        <span class="amt">${fmt(t.amount)}</span>
+      </div>`).join('');
+  }
+  renderDiagram(tx);
+}
+
+function renderDiagram(tx){
+  const n = state.people.length;
+  const cx = 150, cy = 132, radius = n <= 3 ? 90 : 92;
+  const nodes = [];
+  for(let i=0;i<n;i++){
+    const angle = -Math.PI/2 + (2*Math.PI*i)/n;
+    nodes.push({ x: cx + radius*Math.cos(angle), y: cy + radius*Math.sin(angle) });
+  }
+  const nodeR = n <= 4 ? 24 : 20;
+  const g = el('diagramContent');
+  let svg = '';
+
+  // 연결선 (모든 쌍에 옅은 배경선)
+  for(let a=0;a<n;a++){
+    for(let b=a+1;b<n;b++){
+      svg += `<line x1="${nodes[a].x}" y1="${nodes[a].y}" x2="${nodes[b].x}" y2="${nodes[b].y}" stroke="#D8D2C3" stroke-width="1.5"/>`;
+    }
+  }
+
+  // 정산 화살표
+  tx.forEach(t=>{
+    const p1 = nodes[t.from], p2 = nodes[t.to];
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.sqrt(dx*dx+dy*dy) || 1;
+    const ux = dx/len, uy = dy/len;
+    const startX = p1.x + ux*(nodeR+2), startY = p1.y + uy*(nodeR+2);
+    const endX = p2.x - ux*(nodeR+2), endY = p2.y - uy*(nodeR+2);
+    const midX = (startX+endX)/2, midY = (startY+endY)/2 - 6;
+    svg += `<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="#A83A2E" stroke-width="2.2" marker-end="url(#arrowhead)"/>`;
+    svg += `<rect x="${midX-26}" y="${midY-11}" width="52" height="16" fill="#F7F5EE" opacity="0.9"/>`;
+    svg += `<text x="${midX}" y="${midY+1}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#A83A2E">${Math.round(t.amount/1000)}k</text>`;
+  });
+
+  // 인물 노드
+  nodes.forEach((p,i)=>{
+    svg += `<circle cx="${p.x}" cy="${p.y}" r="${nodeR}" fill="#F7F5EE" stroke="#20283C" stroke-width="1.5"/>`;
+    const label = (state.people[i] || '').slice(0,4);
+    svg += `<text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-family="Nanum Myeongjo, serif" font-weight="700" font-size="${n<=4?12:10}" fill="#20283C">${escapeHtml(label)}</text>`;
+  });
+
+  g.innerHTML = svg;
+}
+
+function renderAll(){
+  renderNames();
+  renderSelects();
+  renderEntries();
+  const bal = computeBalances();
+  renderBalances(bal);
+  renderSettlement(bal);
+}
+
+// 이벤트 바인딩 (이름 영역은 동적으로 재생성되므로 위임 방식 사용)
+el('namesBar').addEventListener('input', e=>{
+  if(!e.target.classList.contains('name-input')) return;
+  const i = parseInt(e.target.dataset.idx);
+  state.people[i] = e.target.value || `여행자${i+1}`;
+  saveState();
+  renderSelects(); renderEntries();
+  const bal = computeBalances();
+  renderBalances(bal); renderSettlement(bal);
+});
+el('namesBar').addEventListener('click', e=>{
+  if(e.target.id === 'addTravelerBtn'){ addTraveler(); return; }
+  if(e.target.classList.contains('chip-del')){ removeTraveler(parseInt(e.target.dataset.idx)); return; }
+});
+
+el('currencySel').addEventListener('change', updateRateFieldVisibility);
+el('rateInput').addEventListener('input', updateConvertedHint);
+el('amountInput').addEventListener('input', updateConvertedHint);
+el('rateFetchBtn').addEventListener('click', fetchLiveRate);
+
+el('addBtn').addEventListener('click', ()=>{
+  const from = parseInt(el('fromSel').value);
+  const to = parseInt(el('toSel').value);
+  const amount = parseFloat(el('amountInput').value);
+  const currency = el('currencySel').value;
+  const rate = currency === 'KRW' ? 1 : (parseFloat(el('rateInput').value) || 0);
+  const desc = el('descInput').value.trim();
+  const date = el('dateInput').value || new Date().toISOString().slice(0,10);
+
+  if(from === to){ alert('빌린 사람과 빌려준 사람이 같을 수 없습니다.'); return; }
+  if(!amount || amount <= 0){ alert('금액을 올바르게 입력해주세요.'); return; }
+  if(currency !== 'KRW' && rate <= 0){ alert('환율을 올바르게 입력해주세요.'); return; }
+
+  const krwAmount = Math.round(amount * rate);
+  state.entries.push({ id: Date.now(), from, to, amount, currency, rate, krwAmount, desc, date });
+  saveState();
+  el('amountInput').value = '';
+  el('descInput').value = '';
+  el('currencySel').value = 'KRW';
+  updateRateFieldVisibility();
+  renderAll();
+});
+
+el('resetBtn').addEventListener('click', ()=>{
+  if(confirm('모든 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.')){
+    state = { people: state.people, entries: [] };
+    saveState();
+    renderAll();
+  }
+});
+
+// 초기화
+el('dateInput').value = new Date().toISOString().slice(0,10);
+renderCurrencySelect();
+updateRateFieldVisibility();
+renderAll();
+</script>
+</body>
+</html>
