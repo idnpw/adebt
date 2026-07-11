@@ -709,22 +709,32 @@ async function createSharedLedger(){
   btn.disabled = true; btn.textContent = '만드는 중...';
   try{
     state.updatedAt = Date.now();
-    const res = await fetch(JSONBLOB_BASE, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(state),
-    });
-    if(!res.ok) throw new Error('create failed');
-    const loc = res.headers.get('Location');
-    const id = loc ? loc.split('/').pop() : null;
-    if(!id) throw new Error('no id');
+    let res;
+    try{
+      res = await fetch(JSONBLOB_BASE, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(state),
+      });
+    }catch(networkErr){
+      throw new Error(`네트워크/CORS 오류: ${networkErr.message}`);
+    }
+    if(!res.ok){
+      throw new Error(`서버 응답 오류 (status ${res.status})`);
+    }
+    const loc = res.headers.get('Location') || res.headers.get('location');
+    if(!loc){
+      throw new Error('생성은 됐지만 Location 헤더를 읽지 못했습니다 (CORS 헤더 노출 문제로 보입니다).');
+    }
+    const id = loc.split('/').filter(Boolean).pop();
+    if(!id) throw new Error(`Location 값에서 ID를 추출하지 못했습니다: ${loc}`);
     syncId = id;
     localStorage.setItem(SYNC_ID_KEY, syncId);
     renderSyncUI();
     setSyncStatus('ok', '연결됨 · 방금 만들어짐');
     startPolling();
   }catch(e){
-    alert('공유 장부 생성에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.');
+    alert('공유 장부 생성에 실패했습니다.\n\n원인: ' + e.message);
   }finally{
     btn.disabled = false; btn.textContent = '새 공유 장부 만들기';
   }
@@ -737,8 +747,13 @@ async function joinSharedLedger(){
   const btn = el('joinSyncBtn');
   btn.disabled = true; btn.textContent = '연결 중...';
   try{
-    const res = await fetch(`${JSONBLOB_BASE}/${code}`);
-    if(!res.ok) throw new Error('not found');
+    let res;
+    try{
+      res = await fetch(`${JSONBLOB_BASE}/${code}`);
+    }catch(networkErr){
+      throw new Error(`네트워크/CORS 오류: ${networkErr.message}`);
+    }
+    if(!res.ok) throw new Error(`코드를 찾을 수 없습니다 (status ${res.status})`);
     const remote = normalizeState(await res.json());
     state = remote;
     syncId = code;
@@ -749,7 +764,7 @@ async function joinSharedLedger(){
     setSyncStatus('ok', '연결됨 · 방금 참여함');
     startPolling();
   }catch(e){
-    alert('해당 코드로 공유 장부를 찾을 수 없습니다. 코드를 다시 확인해주세요.');
+    alert('공유 장부 연결에 실패했습니다.\n\n원인: ' + e.message);
   }finally{
     btn.disabled = false; btn.textContent = '연결';
   }
