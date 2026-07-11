@@ -383,10 +383,78 @@
   .reset-btn:hover{color:var(--red);}
 
   :focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  .storage-warning{
+    display:none;
+    background:#F4E3D8;
+    border:1px solid var(--red);
+    color:var(--red);
+    font-size:12.5px;
+    line-height:1.5;
+    padding:10px 12px;
+    border-radius:4px;
+    margin-bottom:16px;
+  }
+  .storage-warning.show{display:block;}
+
+  .sync-desc{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.55;
+    margin:0 0 12px;
+  }
+  .sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .sync-btn{
+    background:var(--card);
+    border:1px solid var(--paper-line);
+    color:var(--ink);
+    font-size:13px;
+    font-weight:500;
+    padding:9px 14px;
+    border-radius:3px;
+  }
+  .sync-btn.primary{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+    font-weight:700;
+  }
+  .sync-btn.small{padding:7px 12px;font-size:12px;}
+  .sync-btn.danger{color:var(--red);border-color:var(--red);background:transparent;}
+  .sync-btn:hover{opacity:.85;}
+  .sync-join-row{display:flex;gap:8px;}
+  .sync-join-row input{flex:1;min-width:0;}
+  .sync-status-row{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:700;color:var(--ink);
+    margin-bottom:8px;
+  }
+  .sync-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    flex-shrink:0;
+  }
+  .sync-dot.err{background:var(--red);}
+  .sync-dot.pending{background:var(--gold);}
+  .sync-code-box{
+    display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid var(--paper-line);
+    border-radius:3px;padding:10px 12px;margin-bottom:10px;
+  }
+  .sync-code-box code{
+    flex:1;min-width:0;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;color:var(--ink);
+    overflow-x:auto;white-space:nowrap;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <div class="storage-warning" id="storageWarning">
+    ⚠️ 이 브라우저에서는 기록이 저장되지 않고 있어요. 사파리 설정 → Safari → "모든 쿠키 차단"이 켜져 있다면 꺼주세요. (개인정보 보호 브라우징 모드에서도 저장이 안 될 수 있어요)
+  </div>
 
   <header>
     <div class="stamp">SETTLE<br>UP</div>
@@ -394,6 +462,37 @@
     <h1>여행 빚장부</h1>
     <div class="sub">함께 떠난 여행, 남은 돈 계산은 여기서 끝낸다</div>
   </header>
+
+  <section id="syncSection">
+    <p class="section-title">☁ 서버 동기화</p>
+
+    <div id="syncDisconnected">
+      <p class="sync-desc">아직 이 장부는 이 기기에만 저장돼요. 동기화를 켜면 코드 하나로 일행 모두가 같은 장부를 실시간으로 공유할 수 있어요.</p>
+      <div class="sync-actions">
+        <button type="button" class="sync-btn primary" id="createSyncBtn">새 공유 장부 만들기</button>
+      </div>
+      <div class="sync-join-row">
+        <input type="text" id="joinCodeInput" placeholder="받은 동기화 코드 입력">
+        <button type="button" class="sync-btn" id="joinSyncBtn">연결</button>
+      </div>
+    </div>
+
+    <div id="syncConnected" style="display:none;">
+      <div class="sync-status-row">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncStatusText">연결됨</span>
+      </div>
+      <p class="sync-desc">아래 코드를 일행에게 공유하고, 각자 기기에서 "받은 동기화 코드 입력"에 붙여넣으면 같은 장부를 함께 씁니다.</p>
+      <div class="sync-code-box">
+        <code id="syncCodeDisplay"></code>
+        <button type="button" class="sync-btn small" id="copySyncBtn">복사</button>
+      </div>
+      <div class="sync-actions">
+        <button type="button" class="sync-btn small" id="manualSyncBtn">지금 동기화</button>
+        <button type="button" class="sync-btn small danger" id="disconnectSyncBtn">연결 해제</button>
+      </div>
+    </div>
+  </section>
 
   <div class="names-bar" id="namesBar"></div>
 
@@ -476,26 +575,192 @@
 
 <script>
 const STORAGE_KEY = 'travelLedger_v1';
+const SYNC_ID_KEY = 'travelLedgerSyncId';
+const JSONBLOB_BASE = 'https://jsonblob.com/api/jsonBlob';
+
+let syncId = localStorage.getItem(SYNC_ID_KEY) || null;
+let pushTimer = null;
+let pollTimer = null;
+let isSyncing = false;
+
+function isStorageAvailable(){
+  try{
+    const testKey = '__storage_test__';
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function showStorageWarning(){
+  const banner = document.getElementById('storageWarning');
+  if(banner) banner.classList.add('show');
+}
+
+function normalizeState(s){
+  return {
+    people: s.people && s.people.length ? s.people : ['여행자1','여행자2','여행자3'],
+    entries: (s.entries || []).map(en=>({
+      ...en,
+      currency: en.currency || 'KRW',
+      rate: en.rate ?? 1,
+      krwAmount: en.krwAmount ?? en.amount,
+    })),
+    updatedAt: s.updatedAt || 0,
+  };
+}
 
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const s = JSON.parse(raw);
-      s.entries = (s.entries || []).map(en=>({
-        ...en,
-        currency: en.currency || 'KRW',
-        rate: en.rate ?? 1,
-        krwAmount: en.krwAmount ?? en.amount,
-      }));
-      return s;
-    }
-  }catch(e){ console.warn('load failed', e); }
-  return { people:['여행자1','여행자2','여행자3'], entries:[] };
+    if(raw) return normalizeState(JSON.parse(raw));
+  }catch(e){ console.warn('load failed', e); showStorageWarning(); }
+  return { people:['여행자1','여행자2','여행자3'], entries:[], updatedAt: 0 };
 }
+
+function persistLocal(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.warn('save failed', e);
+    showStorageWarning();
+  }
+}
+
 function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ console.warn('save failed', e); }
+  state.updatedAt = Date.now();
+  persistLocal();
+  if(syncId){
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushRemote, 500);
+  }
+}
+
+async function pushRemote(){
+  if(!syncId) return;
+  setSyncStatus('pending', '동기화 중...');
+  try{
+    const res = await fetch(`${JSONBLOB_BASE}/${syncId}`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(state),
+    });
+    if(res.ok){
+      setSyncStatus('ok', '연결됨 · 방금 동기화됨');
+    } else {
+      setSyncStatus('err', '동기화 실패 (코드가 만료됐을 수 있어요)');
+    }
+  }catch(e){
+    setSyncStatus('err', '동기화 실패 (오프라인일 수 있어요)');
+  }
+}
+
+async function pollRemote(){
+  if(!syncId || isSyncing) return;
+  isSyncing = true;
+  try{
+    const res = await fetch(`${JSONBLOB_BASE}/${syncId}`);
+    if(res.ok){
+      const remote = normalizeState(await res.json());
+      if(remote.updatedAt > state.updatedAt){
+        state = remote;
+        persistLocal();
+        renderAll();
+      }
+      setSyncStatus('ok', '연결됨 · 실시간 동기화 중');
+    } else if(res.status === 404){
+      setSyncStatus('err', '공유 장부를 찾을 수 없어요. 코드를 확인해주세요.');
+    } else {
+      setSyncStatus('err', '동기화 실패');
+    }
+  }catch(e){
+    setSyncStatus('err', '동기화 실패 (오프라인일 수 있어요)');
+  } finally {
+    isSyncing = false;
+  }
+}
+
+function setSyncStatus(kind, text){
+  const dot = el('syncDot');
+  const label = el('syncStatusText');
+  if(!dot || !label) return;
+  dot.className = 'sync-dot' + (kind === 'err' ? ' err' : kind === 'pending' ? ' pending' : '');
+  label.textContent = text;
+}
+
+function startPolling(){
+  clearInterval(pollTimer);
+  pollTimer = setInterval(pollRemote, 12000);
+}
+
+function renderSyncUI(){
+  const connected = !!syncId;
+  el('syncDisconnected').style.display = connected ? 'none' : 'block';
+  el('syncConnected').style.display = connected ? 'block' : 'none';
+  if(connected){
+    el('syncCodeDisplay').textContent = syncId;
+  }
+}
+
+async function createSharedLedger(){
+  const btn = el('createSyncBtn');
+  btn.disabled = true; btn.textContent = '만드는 중...';
+  try{
+    state.updatedAt = Date.now();
+    const res = await fetch(JSONBLOB_BASE, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(state),
+    });
+    if(!res.ok) throw new Error('create failed');
+    const loc = res.headers.get('Location');
+    const id = loc ? loc.split('/').pop() : null;
+    if(!id) throw new Error('no id');
+    syncId = id;
+    localStorage.setItem(SYNC_ID_KEY, syncId);
+    renderSyncUI();
+    setSyncStatus('ok', '연결됨 · 방금 만들어짐');
+    startPolling();
+  }catch(e){
+    alert('공유 장부 생성에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.');
+  }finally{
+    btn.disabled = false; btn.textContent = '새 공유 장부 만들기';
+  }
+}
+
+async function joinSharedLedger(){
+  const input = el('joinCodeInput');
+  const code = input.value.trim();
+  if(!code){ alert('동기화 코드를 입력해주세요.'); return; }
+  const btn = el('joinSyncBtn');
+  btn.disabled = true; btn.textContent = '연결 중...';
+  try{
+    const res = await fetch(`${JSONBLOB_BASE}/${code}`);
+    if(!res.ok) throw new Error('not found');
+    const remote = normalizeState(await res.json());
+    state = remote;
+    syncId = code;
+    localStorage.setItem(SYNC_ID_KEY, syncId);
+    persistLocal();
+    renderAll();
+    renderSyncUI();
+    setSyncStatus('ok', '연결됨 · 방금 참여함');
+    startPolling();
+  }catch(e){
+    alert('해당 코드로 공유 장부를 찾을 수 없습니다. 코드를 다시 확인해주세요.');
+  }finally{
+    btn.disabled = false; btn.textContent = '연결';
+  }
+}
+
+function disconnectSync(){
+  if(!confirm('연결을 해제할까요? 이 기기의 장부 내용은 그대로 남고, 앞으로는 다른 사람들과 자동으로 공유되지 않아요.')) return;
+  clearInterval(pollTimer);
+  syncId = null;
+  localStorage.removeItem(SYNC_ID_KEY);
+  renderSyncUI();
 }
 
 let state = loadState();
@@ -828,6 +1093,20 @@ el('addBtn').addEventListener('click', ()=>{
   renderAll();
 });
 
+el('createSyncBtn').addEventListener('click', createSharedLedger);
+el('joinSyncBtn').addEventListener('click', joinSharedLedger);
+el('copySyncBtn').addEventListener('click', ()=>{
+  if(!syncId) return;
+  navigator.clipboard?.writeText(syncId).then(()=>{
+    const btn = el('copySyncBtn');
+    const orig = btn.textContent;
+    btn.textContent = '복사됨!';
+    setTimeout(()=>{ btn.textContent = orig; }, 1500);
+  }).catch(()=>{ alert('복사에 실패했습니다. 코드를 길게 눌러 직접 복사해주세요.'); });
+});
+el('manualSyncBtn').addEventListener('click', pollRemote);
+el('disconnectSyncBtn').addEventListener('click', disconnectSync);
+
 el('resetBtn').addEventListener('click', ()=>{
   if(confirm('모든 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.')){
     state = { people: state.people, entries: [] };
@@ -837,9 +1116,16 @@ el('resetBtn').addEventListener('click', ()=>{
 });
 
 // 초기화
+if(!isStorageAvailable()) showStorageWarning();
 el('dateInput').value = new Date().toISOString().slice(0,10);
 renderCurrencySelect();
 updateRateFieldVisibility();
+renderSyncUI();
+if(syncId){
+  setSyncStatus('pending', '연결 확인 중...');
+  pollRemote();
+  startPolling();
+}
 renderAll();
 </script>
 </body>
