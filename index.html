@@ -576,7 +576,7 @@
 <script>
 const STORAGE_KEY = 'travelLedger_v1';
 const SYNC_ID_KEY = 'travelLedgerSyncId';
-const JSONBLOB_BASE = 'https://jsonblob.com/api/jsonBlob';
+const JSONSTORAGE_BASE = 'https://api.jsonstorage.net/v1/json';
 
 let syncId = localStorage.getItem(SYNC_ID_KEY) || null;
 let pushTimer = null;
@@ -642,7 +642,7 @@ async function pushRemote(){
   if(!syncId) return;
   setSyncStatus('pending', '동기화 중...');
   try{
-    const res = await fetch(`${JSONBLOB_BASE}/${syncId}`, {
+    const res = await fetch(`${JSONSTORAGE_BASE}/${syncId}`, {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(state),
@@ -661,7 +661,7 @@ async function pollRemote(){
   if(!syncId || isSyncing) return;
   isSyncing = true;
   try{
-    const res = await fetch(`${JSONBLOB_BASE}/${syncId}`);
+    const res = await fetch(`${JSONSTORAGE_BASE}/${syncId}`);
     if(res.ok){
       const remote = normalizeState(await res.json());
       if(remote.updatedAt > state.updatedAt){
@@ -711,7 +711,7 @@ async function createSharedLedger(){
     state.updatedAt = Date.now();
     let res;
     try{
-      res = await fetch(JSONBLOB_BASE, {
+      res = await fetch(JSONSTORAGE_BASE, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify(state),
@@ -722,12 +722,13 @@ async function createSharedLedger(){
     if(!res.ok){
       throw new Error(`서버 응답 오류 (status ${res.status})`);
     }
-    const loc = res.headers.get('Location') || res.headers.get('location');
-    if(!loc){
-      throw new Error('생성은 됐지만 Location 헤더를 읽지 못했습니다 (CORS 헤더 노출 문제로 보입니다).');
+    const data = await res.json();
+    const uri = data && data.uri;
+    if(!uri){
+      throw new Error('생성은 됐지만 uri 값을 응답에서 찾지 못했습니다: ' + JSON.stringify(data));
     }
-    const id = loc.split('/').filter(Boolean).pop();
-    if(!id) throw new Error(`Location 값에서 ID를 추출하지 못했습니다: ${loc}`);
+    const id = uri.split('/v1/json/')[1];
+    if(!id) throw new Error('uri 값에서 ID를 추출하지 못했습니다: ' + uri);
     syncId = id;
     localStorage.setItem(SYNC_ID_KEY, syncId);
     renderSyncUI();
@@ -749,7 +750,7 @@ async function joinSharedLedger(){
   try{
     let res;
     try{
-      res = await fetch(`${JSONBLOB_BASE}/${code}`);
+      res = await fetch(`${JSONSTORAGE_BASE}/${code}`);
     }catch(networkErr){
       throw new Error(`네트워크/CORS 오류: ${networkErr.message}`);
     }
